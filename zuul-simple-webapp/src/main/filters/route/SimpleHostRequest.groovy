@@ -15,15 +15,23 @@
  */
 
 
+
+
+
+
+import com.codahale.metrics.JmxReporter
+import com.codahale.metrics.MetricRegistry
 import com.netflix.config.DynamicIntProperty
 import com.netflix.config.DynamicPropertyFactory
-import com.netflix.util.Pair
 import com.netflix.zuul.ZuulFilter
 import com.netflix.zuul.constants.ZuulConstants
 import com.netflix.zuul.context.Debug
 import com.netflix.zuul.context.RequestContext
 import com.netflix.zuul.util.HTTPRequestUtils
-import org.apache.http.*
+import org.apache.http.Header
+import org.apache.http.HttpHost
+import org.apache.http.HttpRequest
+import org.apache.http.HttpResponse
 import org.apache.http.client.HttpClient
 import org.apache.http.client.methods.HttpPost
 import org.apache.http.client.methods.HttpPut
@@ -33,34 +41,28 @@ import org.apache.http.conn.scheme.PlainSocketFactory
 import org.apache.http.conn.scheme.Scheme
 import org.apache.http.conn.scheme.SchemeRegistry
 import org.apache.http.entity.InputStreamEntity
-import org.apache.http.impl.client.DefaultHttpClient
 import org.apache.http.impl.client.DefaultHttpRequestRetryHandler
-import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager
 import org.apache.http.message.BasicHeader
 import org.apache.http.message.BasicHttpRequest
-import org.apache.http.message.BasicStatusLine
 import org.apache.http.params.CoreConnectionPNames
 import org.apache.http.params.HttpParams
 import org.apache.http.protocol.HttpContext
-import org.junit.Assert
-import org.junit.Before
-import org.junit.Test
-import org.junit.runner.RunWith
-import org.mockito.Mock
-import org.mockito.Mockito
-import org.mockito.runners.MockitoJUnitRunner
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import javax.servlet.ServletInputStream
 import javax.servlet.http.HttpServletRequest
-import javax.servlet.http.HttpServletResponse
 import java.util.concurrent.atomic.AtomicReference
 import java.util.zip.GZIPInputStream
+
+import com.codahale.metrics.httpclient.InstrumentedHttpClient;
+import com.codahale.metrics.httpclient.HttpClientMetricNameStrategies;
+import com.codahale.metrics.httpclient.InstrumentedClientConnManager
 
 class SimpleHostRoutingFilter extends ZuulFilter {
 
     public static final String CONTENT_ENCODING = "Content-Encoding";
+    private static final MetricRegistry METRICS = new MetricRegistry();
+    private static final JmxReporter REPORTER = JmxReporter.forRegistry(METRICS).build();
 
     private static final Logger LOG = LoggerFactory.getLogger(SimpleHostRoutingFilter.class);
     private static final Runnable CLIENTLOADER = new Runnable() {
@@ -82,6 +84,8 @@ class SimpleHostRoutingFilter extends ZuulFilter {
 
     // cleans expired connections at an interval
     static {
+        REPORTER.start();
+
         SOCKET_TIMEOUT.addCallback(CLIENTLOADER)
         CONNECTION_TIMEOUT.addCallback(CLIENTLOADER)
         CONNECTION_MANAGER_TIMER.schedule(new TimerTask() {
@@ -105,7 +109,7 @@ class SimpleHostRoutingFilter extends ZuulFilter {
         schemeRegistry.register(
                 new Scheme("http", 80, PlainSocketFactory.getSocketFactory()));
 
-        ClientConnectionManager cm = new ThreadSafeClientConnManager(schemeRegistry);
+        ClientConnectionManager cm = new InstrumentedClientConnManager(METRICS, schemeRegistry);
         cm.setMaxTotal(Integer.parseInt(System.getProperty("zuul.max.host.connections", "200")));
         cm.setDefaultMaxPerRoute(Integer.parseInt(System.getProperty("zuul.max.host.connections", "20")));
         return cm;
@@ -146,7 +150,7 @@ class SimpleHostRoutingFilter extends ZuulFilter {
     private static final HttpClient newClient() {
         // I could statically cache the connection manager but we will probably want to make some of its properties
         // dynamic in the near future also
-        HttpClient httpclient = new DefaultHttpClient(newConnectionManager());
+        HttpClient httpclient = new InstrumentedHttpClient(METRICS, newConnectionManager(), null, null, HttpClientMetricNameStrategies.HOST_AND_METHOD);
         HttpParams httpParams = httpclient.getParams();
         httpParams.setIntParameter(CoreConnectionPNames.SO_TIMEOUT, SOCKET_TIMEOUT.get())
         httpParams.setIntParameter(CoreConnectionPNames.CONNECTION_TIMEOUT, CONNECTION_TIMEOUT.get())

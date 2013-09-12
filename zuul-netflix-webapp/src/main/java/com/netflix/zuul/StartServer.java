@@ -75,7 +75,7 @@ import static com.netflix.zuul.constants.ZuulConstants.*;
 @Application
 public class StartServer extends GuiceServletContextListener {
 
-    private static final DynamicBooleanProperty cassandraEnabled = DynamicPropertyFactory.getInstance().getBooleanProperty(ZUUL_CASSANDRA_ENABLED, true);
+    private static final DynamicBooleanProperty cassandraEnabled = DynamicPropertyFactory.getInstance().getBooleanProperty(ZUUL_CASSANDRA_ENABLED, false);
     private static Logger LOG = LoggerFactory.getLogger(StartServer.class);
     private static Keyspace zuulCassKeyspace;
     protected static final Logger logger = LoggerFactory.getLogger(StartServer.class);

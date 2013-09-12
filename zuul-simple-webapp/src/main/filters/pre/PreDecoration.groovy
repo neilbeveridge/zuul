@@ -42,10 +42,10 @@ class PreDecorationFilter extends ZuulFilter {
         RequestContext ctx = RequestContext.getCurrentContext()
 
         // sets origin
-        ctx.setRouteHost(new URL("http://apache.org/"));
+        ctx.setRouteHost(new URL("http://www.google.com"));
 
         // sets custom header to send to the origin
-        ctx.addOriginResponseHeader("cache-control", "max-age=3600");
+        ctx.addZuulRequestHeader("host", "www.google.com");
     }
 
 }

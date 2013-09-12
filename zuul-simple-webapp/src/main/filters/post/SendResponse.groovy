@@ -23,10 +23,6 @@ import com.netflix.zuul.constants.ZuulConstants
 import com.netflix.zuul.constants.ZuulHeaders
 import com.netflix.zuul.context.Debug
 import com.netflix.zuul.context.RequestContext
-import org.junit.Test
-import org.junit.runner.RunWith
-import org.mockito.Mockito
-import org.mockito.runners.MockitoJUnitRunner
 
 import java.util.zip.GZIPInputStream
 import javax.servlet.http.HttpServletResponse
@@ -82,7 +78,7 @@ class SendResponseFilter extends ZuulFilter {
 
             boolean isGzipRequested = false
             final String requestEncoding = context.getRequest().getHeader(ZuulHeaders.ACCEPT_ENCODING)
-            if (requestEncoding != null && requestEncoding.equals("gzip"))
+            if (requestEncoding != null && requestEncoding.indexOf("gzip")>-1)
                 isGzipRequested = true;
 
             is = context.getResponseDataStream();

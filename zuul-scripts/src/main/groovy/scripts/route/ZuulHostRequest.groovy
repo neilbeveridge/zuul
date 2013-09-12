@@ -423,7 +423,7 @@ class ZuulHostRequest extends ZuulFilter {
         switch (header.name.toLowerCase()) {
             case "connection":
             case "content-length":
-            case "content-encoding":
+            //case "content-encoding":
             case "server":
             case "transfer-encoding":
                 return false
